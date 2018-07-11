@@ -1,29 +1,81 @@
-use super::{parse_string, Result, Status};
+use super::{parse_string, Error, QoS, Result, Status};
+use byteorder::{BigEndian, ByteOrder};
+use std::time::Duration;
 
 #[derive(Debug, PartialEq)]
 pub struct Connect<'buf> {
     name: &'buf str,
     revision: u8,
     flags: u8,
+    clean_session: bool,
+    will_flag: bool,
+    will_qos: QoS,
+    will_retain: bool,
+    password: bool,
+    username: bool,
+    keep_alive: Duration,
+    client_id: &'buf str,
 }
 
 impl<'buf> Connect<'buf> {
     pub fn from_bytes(bytes: &[u8]) -> Result<Status<Connect>> {
         // read protocol name
-        let name = complete!(parse_string(bytes));
-        let mut read = 2 + name.len(); // 2 bytes for the string len prefix + length of string in bytes
+        let mut read = 0;
+        let name = next_str!(bytes, read);
 
         // read protocol revision
         let revision = next!(bytes, read);
-        read += 1;
 
         // read protocol flags
         let flags = next!(bytes, read);
+
+        // MQTT-3.1.2-3 requires that the LSB be always set to 0
+        if flags & 1 != 0 {
+            return Err(Error::InvalidConnectFlag);
+        }
+
+        let clean_session = flags & 0b000_000_10 == 1;
+        let will_flag = flags & 0b000_001_00 == 1;
+        let will_qos = QoS::from_u8(flags & 0b000_110_00)?;
+        let will_retain = flags & 0b001_000_00 == 1;
+        let password = flags & 0b010_000_00 == 1;
+        let username = flags & 0b100_000_00 == 1;
+
+        // MQTT-3.1.2-11 - If the Will Flag is set to 0 the Will QoS and Will
+        // Retain fields in the Connect Flags MUST be set to zero and the Will
+        // Topic and Will Message fields MUST NOT be present in the payload
+        if !will_flag {
+            if will_qos != QoS::AtMostOnce {
+                return Err(Error::InvalidQoS);
+            }
+            if will_retain {
+                return Err(Error::InvalidWillRetain);
+            }
+        }
+
+        // MQTT-3.1.2-22 - If the User Name Flag is set to 0, the Password Flag MUST be set to 0
+        if !username && password {
+            return Err(Error::PasswordWithoutUsername);
+        }
+
+        // read keep alive duration
+        let keep_alive = Duration::from_secs(next_u16!(bytes, read) as u64);
+
+        // read client id
+        let client_id = next_str!(bytes, read);
 
         Ok(Status::Complete(Connect {
             name,
             revision,
             flags,
+            clean_session,
+            will_flag,
+            will_qos,
+            will_retain,
+            password,
+            username,
+            keep_alive,
+            client_id,
         }))
     }
 

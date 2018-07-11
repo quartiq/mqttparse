@@ -35,6 +35,17 @@ pub enum QoS {
     ExactlyOnce,
 }
 
+impl QoS {
+    pub fn from_u8(qos: u8) -> Result<QoS> {
+        match qos {
+            0 => Ok(QoS::AtMostOnce),
+            1 => Ok(QoS::AtLeastOnce),
+            2 => Ok(QoS::ExactlyOnce),
+            _ => Err(Error::InvalidQoS),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PacketType {
     Connect,

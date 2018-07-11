@@ -16,6 +16,12 @@ pub enum Error {
     Utf8,
     /// Invalid connect flag value
     InvalidConnectFlag,
+    /// Invalid QoS value
+    InvalidQoS,
+    /// Invalid Will Retain value
+    InvalidWillRetain,
+    /// Cannot provide password without username
+    PasswordWithoutUsername,
 }
 
 impl Error {
@@ -27,6 +33,9 @@ impl Error {
             Error::InvalidLength => "invalid buffer length",
             Error::Utf8 => "invalid utf-8 encoding",
             Error::InvalidConnectFlag => "invalid connect flag value",
+            Error::InvalidQoS => "invalid qos value",
+            Error::InvalidWillRetain => "invalid Will Retain value",
+            Error::PasswordWithoutUsername => "cannot provide password without username",
         }
     }
 }

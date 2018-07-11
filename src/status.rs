@@ -55,7 +55,35 @@ macro_rules! complete {
 macro_rules! next {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
-            $bytes[$read]
+            let b = $bytes[$read];
+            $read += 1;
+            b
+        } else {
+            return Ok(Status::Partial);
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! next_str {
+    ($bytes:ident, $read:ident) => {{
+        if $bytes.len() - $read > 0 {
+            let s = complete!(parse_string(&$bytes[$read..]));
+            $read += 2 + s.len();
+            s
+        } else {
+            return Ok(Status::Partial);
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! next_u16 {
+    ($bytes:ident, $read:ident) => {{
+        if $bytes.len() - $read > 0 {
+            let v = BigEndian::read_u16(&$bytes[$read..]);
+            $read += 2;
+            v
         } else {
             return Ok(Status::Partial);
         }
