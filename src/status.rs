@@ -65,11 +65,48 @@ macro_rules! next {
 }
 
 #[macro_export]
+macro_rules! next_bytes {
+    ($bytes:ident, $read:ident) => {{
+        if $bytes.len() - $read > 0 {
+            let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
+            $read += 2 + s.len();
+            s
+        } else {
+            return Ok(Status::Partial);
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! next_bytes_final {
+    ($bytes:ident, $read:ident) => {{
+        if $bytes.len() - $read > 0 {
+            let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
+            s
+        } else {
+            return Ok(Status::Partial);
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! next_str {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let s = complete!(parse_string(&$bytes[$read..]));
             $read += 2 + s.len();
+            s
+        } else {
+            return Ok(Status::Partial);
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! next_str_final {
+    ($bytes:ident, $read:ident) => {{
+        if $bytes.len() - $read > 0 {
+            let s = complete!(parse_string(&$bytes[$read..]));
             s
         } else {
             return Ok(Status::Partial);
