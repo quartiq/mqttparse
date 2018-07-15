@@ -52,7 +52,7 @@ macro_rules! complete {
 }
 
 #[macro_export]
-macro_rules! next {
+macro_rules! read_byte {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let b = $bytes[$read];
@@ -65,7 +65,7 @@ macro_rules! next {
 }
 
 #[macro_export]
-macro_rules! next_bytes {
+macro_rules! read_bytes {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
@@ -78,7 +78,7 @@ macro_rules! next_bytes {
 }
 
 #[macro_export]
-macro_rules! next_bytes_final {
+macro_rules! read_bytes_final {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
@@ -90,7 +90,7 @@ macro_rules! next_bytes_final {
 }
 
 #[macro_export]
-macro_rules! next_str {
+macro_rules! read_str {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let s = complete!(parse_string(&$bytes[$read..]));
@@ -103,7 +103,7 @@ macro_rules! next_str {
 }
 
 #[macro_export]
-macro_rules! next_str_final {
+macro_rules! read_str_final {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let s = complete!(parse_string(&$bytes[$read..]));
@@ -115,7 +115,7 @@ macro_rules! next_str_final {
 }
 
 #[macro_export]
-macro_rules! next_u16 {
+macro_rules! read_u16 {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
             let v = BigEndian::read_u16(&$bytes[$read..]);
