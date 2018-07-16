@@ -14,8 +14,8 @@ impl Header {
             return Ok(Status::Partial);
         }
 
-        let (type_, flags) = parse_packet_type(bytes[0])?;
-        let (len, _) = parse_remaining_length(&bytes[1..])?;
+        let (type_, flags) = decode_packet_type(bytes[0])?;
+        let (len, _) = decode_remaining_length(&bytes[1..])?;
 
         Ok(Status::Complete(Header { type_, flags, len }))
     }
@@ -33,7 +33,7 @@ impl Header {
     }
 }
 
-fn parse_remaining_length(bytes: &[u8]) -> Result<(u32, usize)> {
+fn decode_remaining_length(bytes: &[u8]) -> Result<(u32, usize)> {
     let mut multiplier = 1;
     let mut value = 0u32;
     let mut index = 0;
@@ -55,7 +55,7 @@ fn parse_remaining_length(bytes: &[u8]) -> Result<(u32, usize)> {
     }
 }
 
-fn parse_packet_type(inp: u8) -> Result<(PacketType, PacketTypeFlags)> {
+fn decode_packet_type(inp: u8) -> Result<(PacketType, PacketTypeFlags)> {
     // high 4 bits are the packet type
     let packet_type = match (inp & 0xF0) >> 4 {
         1 => Ok(PacketType::Connect),
@@ -150,7 +150,7 @@ mod tests {
 
         for (buf, expected_type) in inputs.iter_mut() {
             let expected_flag = buf[0] & 0xF;
-            let (packet_type, flag) = parse_packet_type(buf[0]).unwrap();
+            let (packet_type, flag) = decode_packet_type(buf[0]).unwrap();
             assert_eq!(packet_type, *expected_type);
             assert_eq!(flag, expected_flag);
         }
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn bad_packet_type() {
-        let result = parse_packet_type(15 << 4);
+        let result = decode_packet_type(15 << 4);
         assert_eq!(result, Err(Error::PacketType));
     }
 
@@ -177,7 +177,7 @@ mod tests {
             ([14 << 4 | 1], PacketType::Disconnect),
         ];
         for (buf, _) in inputs.iter_mut() {
-            let result = parse_packet_type(buf[0]);
+            let result = decode_packet_type(buf[0]);
             assert_eq!(result, Err(Error::PacketFlag));
         }
     }
@@ -190,7 +190,7 @@ mod tests {
             ([10 << 4 | 0], PacketType::Unsubscribe),
         ];
         for (buf, _) in inputs.iter_mut() {
-            let result = parse_packet_type(buf[0]);
+            let result = decode_packet_type(buf[0]);
             assert_eq!(result, Err(Error::PacketFlag));
         }
     }
@@ -199,7 +199,7 @@ mod tests {
     fn publish_flags() {
         for i in 0..15 {
             let mut input = 03 << 4 | i;
-            let (packet_type, flag) = parse_packet_type(input).unwrap();
+            let (packet_type, flag) = decode_packet_type(input).unwrap();
             assert_eq!(packet_type, PacketType::Publish);
             assert_eq!(flag, i);
         }
@@ -231,7 +231,7 @@ mod tests {
                 let mut buf = [0u8; 4];
                 let expected_index = encode_remaining_length(i, &mut buf);
                 let (len, index) =
-                    parse_remaining_length(&buf).expect(&format!("Failed for number: {}", i));
+                    decode_remaining_length(&buf).expect(&format!("Failed for number: {}", i));
                 assert_eq!(i, len);
                 assert_eq!(expected_index, index);
                 0
@@ -242,14 +242,14 @@ mod tests {
     #[test]
     fn bad_remaining_length() {
         let buf = [0xFF, 0xFF, 0xFF, 0xFF];
-        let result = parse_remaining_length(&buf);
+        let result = decode_remaining_length(&buf);
         assert_eq!(result, Err(Error::RemainingLength));
     }
 
     #[test]
     fn bad_remaining_length2() {
         let buf = [0xFF, 0xFF];
-        let result = parse_remaining_length(&buf);
+        let result = decode_remaining_length(&buf);
         assert_eq!(result, Err(Error::InvalidLength));
     }
 

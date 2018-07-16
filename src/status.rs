@@ -68,7 +68,7 @@ macro_rules! read_byte {
 macro_rules! read_bytes {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
-            let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
+            let s = complete!(decode_len_prefixed_bytes(&$bytes[$read..]));
             $read += 2 + s.len();
             s
         } else {
@@ -81,7 +81,7 @@ macro_rules! read_bytes {
 macro_rules! read_bytes_final {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
-            let s = complete!(parse_len_prefixed_bytes(&$bytes[$read..]));
+            let s = complete!(decode_len_prefixed_bytes(&$bytes[$read..]));
             s
         } else {
             return Ok(Status::Partial);
@@ -93,7 +93,7 @@ macro_rules! read_bytes_final {
 macro_rules! read_str {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
-            let s = complete!(parse_string(&$bytes[$read..]));
+            let s = complete!(decode_string(&$bytes[$read..]));
             $read += 2 + s.len();
             s
         } else {
@@ -106,7 +106,7 @@ macro_rules! read_str {
 macro_rules! read_str_final {
     ($bytes:ident, $read:ident) => {{
         if $bytes.len() - $read > 0 {
-            let s = complete!(parse_string(&$bytes[$read..]));
+            let s = complete!(decode_string(&$bytes[$read..]));
             s
         } else {
             return Ok(Status::Partial);

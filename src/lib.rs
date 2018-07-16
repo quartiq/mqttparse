@@ -1,4 +1,4 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate byteorder;
@@ -64,9 +64,13 @@ pub enum PacketType {
     Disconnect,
 }
 
+pub trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<usize>;
+}
+
 pub type Result<T> = result::Result<T, Error>;
 
-pub fn parse_string(bytes: &[u8]) -> Result<Status<&str>> {
+pub fn decode_string(bytes: &[u8]) -> Result<Status<&str>> {
     // we need at least the 2 bytes to figure out length of the utf-8 encoded
     // string in bytes
     if bytes.len() < 2 {
@@ -95,7 +99,21 @@ pub fn parse_string(bytes: &[u8]) -> Result<Status<&str>> {
     }
 }
 
-pub fn parse_len_prefixed_bytes(bytes: &[u8]) -> Result<Status<&[u8]>> {
+pub fn encode_string<T: Write>(val: &str, writer: &mut T) -> Result<usize> {
+    let mut written = 0;
+
+    // write the string length
+    let mut buf = [0u8; 2];
+    BigEndian::write_u16(&mut buf, val.len() as u16);
+    written += writer.write(&buf)?;
+
+    // write the string
+    written += writer.write(val.as_bytes())?;
+
+    Ok(written)
+}
+
+pub fn decode_len_prefixed_bytes(bytes: &[u8]) -> Result<Status<&[u8]>> {
     // we need at least the 2 bytes to figure out length of the payload
     if bytes.len() < 2 {
         return Ok(Status::Partial);
@@ -113,7 +131,7 @@ pub fn parse_len_prefixed_bytes(bytes: &[u8]) -> Result<Status<&[u8]>> {
 mod tests {
     use super::*;
 
-    mod parse_string {
+    mod decode_string {
         use super::*;
         use std::io::{Cursor, Write};
 
@@ -121,18 +139,18 @@ mod tests {
 
         #[test]
         fn small_buffer() {
-            assert_eq!(Status::Partial, parse_string(&[]).unwrap());
-            assert_eq!(Status::Partial, parse_string(&[0]).unwrap());
+            assert_eq!(Status::Partial, decode_string(&[]).unwrap());
+            assert_eq!(Status::Partial, decode_string(&[0]).unwrap());
 
             let mut buf = [0u8; 2];
             BigEndian::write_u16(&mut buf, 16);
-            assert_eq!(Status::Partial, parse_string(&buf).unwrap());
+            assert_eq!(Status::Partial, decode_string(&buf).unwrap());
         }
 
         #[test]
         fn empty_str() {
             let buf = [0u8; 2];
-            assert_eq!(Status::Complete(""), parse_string(&buf).unwrap());
+            assert_eq!(Status::Complete(""), decode_string(&buf).unwrap());
         }
 
         #[test]
@@ -143,7 +161,7 @@ mod tests {
             buf.write(inp.as_bytes()).unwrap();
             assert_eq!(
                 Status::Complete(inp),
-                parse_string(buf.get_ref().as_ref()).unwrap()
+                decode_string(buf.get_ref().as_ref()).unwrap()
             );
         }
 
@@ -153,7 +171,7 @@ mod tests {
             let mut buf = Cursor::new(Vec::new());
             buf.write_u16::<BigEndian>(inp.len() as u16).unwrap();
             buf.write(&inp).unwrap();
-            assert_eq!(Err(Error::Utf8), parse_string(buf.get_ref().as_ref()));
+            assert_eq!(Err(Error::Utf8), decode_string(buf.get_ref().as_ref()));
         }
 
         #[test]
@@ -162,11 +180,11 @@ mod tests {
             let mut buf = Cursor::new(Vec::new());
             buf.write_u16::<BigEndian>(inp.len() as u16).unwrap();
             buf.write(inp.as_bytes()).unwrap();
-            assert_eq!(Err(Error::Utf8), parse_string(buf.get_ref().as_ref()));
+            assert_eq!(Err(Error::Utf8), decode_string(buf.get_ref().as_ref()));
         }
     }
 
-    mod parse_len_prefixed_bytes {
+    mod decode_len_prefixed_bytes {
         use super::*;
         use std::io::{Cursor, Write};
 
@@ -174,12 +192,12 @@ mod tests {
 
         #[test]
         fn small_buffer() {
-            assert_eq!(Status::Partial, parse_len_prefixed_bytes(&[]).unwrap());
-            assert_eq!(Status::Partial, parse_len_prefixed_bytes(&[0]).unwrap());
+            assert_eq!(Status::Partial, decode_len_prefixed_bytes(&[]).unwrap());
+            assert_eq!(Status::Partial, decode_len_prefixed_bytes(&[0]).unwrap());
 
             let mut buf = [0u8; 2];
             BigEndian::write_u16(&mut buf, 16);
-            assert_eq!(Status::Partial, parse_len_prefixed_bytes(&buf).unwrap());
+            assert_eq!(Status::Partial, decode_len_prefixed_bytes(&buf).unwrap());
         }
 
         #[test]
@@ -187,7 +205,7 @@ mod tests {
             let buf = [0u8; 2];
             assert_eq!(
                 Status::Complete(&buf[0..0]),
-                parse_len_prefixed_bytes(&buf).unwrap()
+                decode_len_prefixed_bytes(&buf).unwrap()
             );
         }
 
@@ -199,7 +217,7 @@ mod tests {
             buf.write(inp).unwrap();
             assert_eq!(
                 Status::Complete(inp),
-                parse_len_prefixed_bytes(buf.get_ref().as_ref()).unwrap()
+                decode_len_prefixed_bytes(buf.get_ref().as_ref()).unwrap()
             );
         }
     }

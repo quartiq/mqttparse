@@ -1,6 +1,8 @@
-use super::{parse_len_prefixed_bytes, parse_string, Error, QoS, Result, Status};
+use super::{decode_len_prefixed_bytes, decode_string, Error, QoS, Result, Status};
 use byteorder::{BigEndian, ByteOrder};
 use core::time::Duration;
+
+pub const PROTOCOL_REVISION_3_1_1: u8 = 0x04; // MQTT 3.1.1
 
 #[derive(Debug, PartialEq)]
 pub struct Connect<'buf> {
@@ -22,6 +24,138 @@ pub struct Connect<'buf> {
 }
 
 impl<'buf> Connect<'buf> {
+    pub fn new(name: &'buf str, client_id: &'buf str, keep_alive: Duration) -> Connect<'buf> {
+        Connect {
+            name,
+            revision: PROTOCOL_REVISION_3_1_1,
+            flags: 0,
+            clean_session: false,
+            will_flag: false,
+            will_topic: None,
+            will_msg: None,
+            will_qos: QoS::AtMostOnce,
+            will_retain: false,
+            username_present: false,
+            username: None,
+            password_present: false,
+            password: None,
+            keep_alive,
+            client_id,
+        }
+    }
+
+    pub fn with_revision(mut self, revision: u8) -> Connect<'buf> {
+        self.revision = revision;
+        self
+    }
+
+    pub fn with_flags(mut self, flags: u8) -> Connect<'buf> {
+        self.flags = flags;
+        self
+    }
+
+    pub fn with_clean_session(mut self, clean_session: bool) -> Connect<'buf> {
+        self.clean_session = clean_session;
+        self
+    }
+
+    pub fn with_will_flag(mut self, will_flag: bool) -> Connect<'buf> {
+        self.will_flag = will_flag;
+        self
+    }
+
+    pub fn with_will_topic(mut self, will_topic: &'buf str) -> Connect<'buf> {
+        self.will_topic = Some(will_topic);
+        self
+    }
+
+    pub fn with_will_msg(mut self, will_msg: &'buf [u8]) -> Connect<'buf> {
+        self.will_msg = Some(will_msg);
+        self
+    }
+
+    pub fn with_will_qos(mut self, will_qos: QoS) -> Connect<'buf> {
+        self.will_qos = will_qos;
+        self
+    }
+
+    pub fn with_will_retain(mut self, will_retain: bool) -> Connect<'buf> {
+        self.will_retain = will_retain;
+        self
+    }
+
+    pub fn with_username(mut self, username: &'buf str) -> Connect<'buf> {
+        self.username_present = true;
+        self.username = Some(username);
+        self
+    }
+
+    pub fn with_password(mut self, password: &'buf [u8]) -> Connect<'buf> {
+        self.password_present = true;
+        self.password = Some(password);
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        self.name
+    }
+
+    pub fn revision(&self) -> &u8 {
+        &self.revision
+    }
+
+    pub fn flags(&self) -> &u8 {
+        &self.flags
+    }
+
+    pub fn clean_session(&self) -> &bool {
+        &self.clean_session
+    }
+
+    pub fn will_flag(&self) -> &bool {
+        &self.will_flag
+    }
+
+    pub fn will_qos(&self) -> &QoS {
+        &self.will_qos
+    }
+
+    pub fn will_retain(&self) -> &bool {
+        &self.will_retain
+    }
+
+    pub fn username_present(&self) -> &bool {
+        &self.username_present
+    }
+
+    pub fn username(&self) -> &Option<&'buf str> {
+        &self.username
+    }
+
+    pub fn password_present(&self) -> &bool {
+        &self.password_present
+    }
+
+    pub fn password(&self) -> &Option<&'buf [u8]> {
+        &self.password
+    }
+
+    pub fn keep_alive(&self) -> &Duration {
+        &self.keep_alive
+    }
+
+    pub fn client_id(&self) -> &'buf str {
+        self.client_id
+    }
+
+    pub fn will_topic(&self) -> &Option<&'buf str> {
+        &self.will_topic
+    }
+
+    pub fn will_msg(&self) -> &Option<&'buf [u8]> {
+        &self.will_msg
+    }
+
     pub fn from_bytes(bytes: &[u8]) -> Result<Status<Connect>> {
         // read protocol name
         let mut read = 0;
@@ -106,65 +240,7 @@ impl<'buf> Connect<'buf> {
         }))
     }
 
-    pub fn name(&self) -> &str {
-        self.name
-    }
-
-    pub fn revision(&self) -> &u8 {
-        &self.revision
-    }
-
-    pub fn flags(&self) -> &u8 {
-        &self.flags
-    }
-
-    pub fn clean_session(&self) -> &bool {
-        &self.clean_session
-    }
-
-    pub fn will_flag(&self) -> &bool {
-        &self.will_flag
-    }
-
-    pub fn will_qos(&self) -> &QoS {
-        &self.will_qos
-    }
-
-    pub fn will_retain(&self) -> &bool {
-        &self.will_retain
-    }
-
-    pub fn username_present(&self) -> &bool {
-        &self.username_present
-    }
-
-    pub fn username(&self) -> &Option<&'buf str> {
-        &self.username
-    }
-
-    pub fn password_present(&self) -> &bool {
-        &self.password_present
-    }
-
-    pub fn password(&self) -> &Option<&'buf [u8]> {
-        &self.password
-    }
-
-    pub fn keep_alive(&self) -> &Duration {
-        &self.keep_alive
-    }
-
-    pub fn client_id(&self) -> &'buf str {
-        self.client_id
-    }
-
-    pub fn will_topic(&self) -> &Option<&'buf str> {
-        &self.will_topic
-    }
-
-    pub fn will_msg(&self) -> &Option<&'buf [u8]> {
-        &self.will_msg
-    }
+    // pub fn to_bytes<T: Write>(&self) -> Result<usize> {}
 }
 
 #[cfg(test)]
