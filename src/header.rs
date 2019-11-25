@@ -31,6 +31,10 @@ impl Header {
     pub fn len(&self) -> &u32 {
         &self.len
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
 }
 
 fn parse_remaining_length(bytes: &[u8]) -> Result<(u32, usize)> {
@@ -115,10 +119,8 @@ fn validate_flag_val(
     types: &[PacketType],
     expected_flags: PacketTypeFlags,
 ) -> Result<(PacketType, PacketTypeFlags)> {
-    if let Some(_) = types.iter().find(|&&v| v == packet_type) {
-        if flags != expected_flags {
-            return Err(Error::PacketFlag);
-        }
+    if types.iter().any(|&v| v == packet_type) && flags != expected_flags {
+        return Err(Error::PacketFlag);
     }
 
     Ok((packet_type, flags))
@@ -198,7 +200,7 @@ mod tests {
     #[test]
     fn publish_flags() {
         for i in 0..15 {
-            let mut input = 03 << 4 | i;
+            let input = 03 << 4 | i;
             let (packet_type, flag) = parse_packet_type(input).unwrap();
             assert_eq!(packet_type, PacketType::Publish);
             assert_eq!(flag, i);
