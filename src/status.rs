@@ -44,7 +44,7 @@ impl<T> Status<T> {
 #[macro_export]
 macro_rules! complete {
     ($e:expr) => {
-        match try!($e) {
+        match $e? {
             Status::Complete(v) => v,
             Status::Partial => return Ok(Status::Partial),
         }
